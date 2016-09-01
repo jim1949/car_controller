@@ -353,7 +353,7 @@ class path_planner():
         self.final_distance=pioneerdata.final_distance
 
     def judge_stage(self):
-        if self.distancelength<self.distance_to_left_pavement:
+        if self.distancelength<self.distance_to_left_pavement-self.bufdistance:
             self.stage=1
 
         elif self.distancelength>self.distance_to_right_pavement:
@@ -506,6 +506,7 @@ class People_states():
         self.world_position_x=1e7*np.ones(ranges_num)
         self.world_position_y=1e7*np.ones(ranges_num)
         self.world_nearest_position_x=1e7
+        self.world_nearest_position_y=1e7
         self.velocity_x=0
         self.velocity_y=0
         self.t=0
@@ -523,6 +524,7 @@ class People_states():
 
     def states_measurement(self,path_plan):
         self.world_nearest_position_x=1e7
+
         for i in range(0,ranges_num,1):#0,1,2,3,...,ranges_num
             # if self.local_position_x[i]<0.1:
             #     self.local_position_x[i]=1e7
@@ -531,8 +533,8 @@ class People_states():
             # rospy.loginfo("i:%f"%i)
             # rospy.loginfo("path_plan.readings%f",path_plan.readings[i])
             # rospy.loginfo("local_position_x%f",self.local_position_x[i])
-            self.local_position_x[i]=path_plan.readings[i]*cos(pi-pi*i/ranges_num)
-            self.local_position_y[i]=path_plan.readings[i]*sin(pi-pi*i/ranges_num)
+            self.local_position_x[i]=path_plan.readings[i]*cos(pi*i/ranges_num)
+            self.local_position_y[i]=path_plan.readings[i]*sin(pi*i/ranges_num)
             #@pay attention to that in the real world,pi-... is in simulation, and pi-... in simulation will make the robot's y in positive axis
             self.world_position_x[i]=self.local_position_x[i]*cos(path_plan.car_theta-pi/2)-self.local_position_y[i]*sin(path_plan.car_theta-pi/2)+path_plan.car_x
             self.world_position_y[i]=-self.local_position_x[i]*sin(path_plan.car_theta-pi/2)+self.local_position_y[i]*cos(path_plan.car_theta-pi/2)+path_plan.car_y
@@ -541,16 +543,19 @@ class People_states():
         # print(self.local_position_y)
         # print(self.world_position_x)
         # print(self.world_position_y)
-            if (self.world_position_y[i]>path_plan.distance_to_left_pavement) and (self.world_position_y[i]<path_plan.distance_to_right_pavement):
+        #intially set the pedestrian all work here in the pavement area.
+            # if (self.world_position_y[i]>path_plan.distance_to_left_pavement) and (self.world_position_y[i]<path_plan.distance_to_right_pavement):
+            if path_plan.readings[i]<14:
                 if self.world_nearest_position_x>abs(self.world_position_x[i]):
-                    self.world_nearest_position_x=abs(self.world_position_x[i])
+                    self.world_nearest_position_x=self.world_position_x[i]
+                    self.world_nearest_position_y=self.world_position_y[i]
                 #     print("this is final %f"%i)
                 # rospy.loginfo("world_nearest_position_x:%f"%self.world_nearest_position_x)
 
         # rospy.loginfo("local_position_x num%f",len(self.local_position_x[0:ranges_num]))
         # print(path_plan.readings)
         # print(self.local_position_x)
-        # print(self.world_position_x)
+        rospy.loginfo("world_nearest_x:%f,y:%f"%(self.world_nearest_position_x,self.world_nearest_position_y))
         
         
 
@@ -593,9 +598,9 @@ def start():
 
         # rospy.loginfo("speed:  %f"%path_plan.out_v)
         if path_plan.waitmessage>=30:
-
+            pass
             
-            path_plan.cmd.publish(motion)
+            # path_plan.cmd.publish(motion)
         else:
             rospy.loginfo("Don't move!")
         # rospy.loginfo("In the loop,my speed_x:%f,my angular velocity:%fmy orientation:%f"%(path_plan.car_ctrlSpeed_x,path_plan.car_ctrlSteer,path_plan.car_theta))
