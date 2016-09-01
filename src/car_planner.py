@@ -10,18 +10,31 @@ from nav_msgs.msg import Odometry
 from sensor_msgs.msg import LaserScan
 import numpy as np
 import math
-from math import pi
+from math import pi,sin,cos
 # from function.waypoint_following import waypoint_follower
 # from function.point2point import point2point
 # from function.point2point2 import point2point
 # from tclass.point_rectangle import *
+
+global v_pedestrian_max
+v_pedestrian_max=1.0
+global ranges_num
+ranges_num=36
 class Car_data():
     def __init__(self):
         self.car_init_x=-1.5
         self.car_init_y=-15.0
         self.car_init_yaw=-pi/2
-        self.path=np.array([[-1.5,40],[1.1,40],[1.1,-40],[-1.5,-40]])
-        self.pavement_point=np.array([-3.5,3.5])
+        self.path=np.array([[-1.5,40.0],[1.1,40.0],[1.1,-40.0],[-1.5,-40.0]])
+
+        self.distance_to_left_pavement=5.0
+        self.distance_to_right_pavement=6.0
+        #based on vehicle and pedestrians
+        self.bufdistance=2.0
+        self.final_distance=8.0
+
+        self.length=1.5
+        self.width=1.5
 
 class Pioneer_data():
     def __init__(self):
@@ -29,9 +42,14 @@ class Pioneer_data():
         self.pioneer_init_y=0.0
         self.pioneer_init_yaw=-pi/2
         self.path=np.array([[-2.0,0.0],[8.0,0.0]])
-        self.pavement_point=np.array([-1.0,1.0])
+        self.distance_to_left_pavement=4.0
+        self.distance_to_right_pavement=6.0
+        self.bufdistance=0.5
+        self.final_distance=8.0
 
-
+        self.length=0.5
+        self.width=0.5
+        #based on vehicle and pedestrians
 
 class Point:
     
@@ -137,7 +155,7 @@ class Point:
         
         The new position is returned as a new Point.
         """
-        s, c = [f(rad) for f in (math.sin, math.cos)]
+        s, c = [f(rad) for f in (sin, cos)]
         x, y = (c*self.x - s*self.y, s*self.x + c*self.y)
         return Point(x,y)
     
@@ -154,26 +172,30 @@ class Point:
         result.slide(p.x, p.y)
         return result
 
-
 class path_planner():
-    def __init__(self,):
+    def __init__(self):
         self.readings=[]
         self.sick_readings=[]
         self.car_x=0.0
         self.car_y=0.0
         self.car_theta=0.0
         self.car_ctrlSpeed=0.0
+        self.car_ctrlSpeed_x=0.0
         self.car_ctrlSteer=0.0
-        self.freq=60
+        self.freq=6
         self.dt=1.0/self.freq
         self.a=2.0
 
-        self.checkingdistance=1e7
+        self.init_x=0.0
+        self.init_y=0.0
+        self.init_yaw=0.0
+
 
         self.init_setvalue_yaw=0.0
         self.startflag=True
         self.destflag=False
         self.stopflag=False#flag if detect any pedestrains
+        self.init_setflag=False
 
         self.nearest_reading=1e7
         self.w=0.0
@@ -183,18 +205,28 @@ class path_planner():
         self.out_v=0.0
         self.out_w=0.0
 
-        self.distancelength=0
+        self.distancelength=0.0
 
+        self.waitmessage=0
 
+    
+        self.bufdistance=0.0
+
+        self.length=0
+        self.width=0
+
+        self.distance_to_left_pavement=0.0
+        self.distance_to_left_pavement=0.0
+
+        self.stage=0
+
+        self.ranges=[]
 
         # 2(1.5,20)->    3(1.5,-20)
         #     ^    |
         #     |    v
 
         # 1(-1.5,20)<-    4(-1.5)
-        self.sick_readings = open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/sick_data.dat", "a")
-        self.pedestrains_readings = open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/pedestrains.dat", "a")
-        self.results_file_handle = open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/cardata.dat","a")
         
         self.x=int(input("0:simulation only,1:simulation for pioneer with GPS sensor,2:simulation for pioneer with odometry sensor,3:real world for pioneer\n"))
         print(self.x)
@@ -205,6 +237,9 @@ class path_planner():
             self.subscriber2=rospy.Subscriber("/robot/velocity", TwistStamped, self.callback_velocity)
             self.subscriber3=rospy.Subscriber("/robot/sick",LaserScan,self.callback_sick)
             print("choose simulation,max_v")
+            self.sick_readings = open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/pod_simulation_sick_data.dat", "a")
+ 
+            self.results_file_handle = open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/pod_simulation_cardata.dat","a")
 
 
         elif self.x==1:
@@ -213,12 +248,16 @@ class path_planner():
             self.subscriber2=rospy.Subscriber("/robot/velocity", TwistStamped, self.callback_velocity)
             self.subscriber3=rospy.Subscriber("/robot/sick",LaserScan,self.callback_sick)
             print("choose simulation with pioneer with GPS sensor")
+            self.sick_readings = open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/pioneer_simulation_GPS_sick_data.dat", "a")
+            self.results_file_handle = open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/pioneer_simulation_GPS_cardata.dat","a")
         elif self.x==2:
             self.cmd = rospy.Publisher("/robot/motion", Twist, queue_size = 10)
             self.subscriber1=rospy.Subscriber("/robot/odom", Odometry, self.callback_pose)
             self.subscriber2=rospy.Subscriber("/robot/odom", Odometry, self.callback_velocity)
             self.subscriber3=rospy.Subscriber("/robot/sick",LaserScan,self.callback_sick)
             print("choose simulation with pioneer with odometry sensor")
+            self.sick_readings = open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/pioneer_simulation_sick_data.dat", "a")
+            self.results_file_handle = open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/pioneer_simulation_cardata.dat","a")
 
         else:
             self.cmd = rospy.Publisher("/cmd_vel", Twist, queue_size = 10)
@@ -226,191 +265,116 @@ class path_planner():
             self.subscriber2=rospy.Subscriber("/pose", Odometry, self.callback_velocity)
             self.subscriber3=rospy.Subscriber("/scan",LaserScan,self.callback_sick)
             print("choose real world with pioneer")
+            self.sick_readings = open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/pioneer_realworld_sick_data.dat", "a")
+            self.results_file_handle = open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/pioneer_realworld_cardata.dat","a")
 
         print(self.x)
 
 
     def set_vehicle_data(self, pioneerdata,cardata):
         if self.x==0:
-            self.max_v=1.0
-            self.max_a=4.0
-            self.max_jerk=4.0
-            self.checkingdistance=4.0
-            self.nearestreading_stop=2.0
-            self.init_setvalue=PoseStamped()
-            self.init_setflag=True
-            #car information
-            self.path=cardata.path
-            self.pavement_point=cardata.pavement_point
-            self.init_x=cardata.car_init_x
-            self.init_y=cardata.car_init_y
-            self.init_yaw=cardata.car_init_yaw
-            print("choose simulation,max_v:%f,my acceleration:%f"%(self.max_v,self.max_a))
+            self.setcardata(pioneerdata,cardata)
+            
         elif self.x==1:
-
-            self.max_v=0.2
-            self.max_a=8.0
-            self.max_jerk=1.0 
-            self.checkingdistance=3.0 
-            self.nearestreading_stop=1.0
-
-            self.init_setflag=True
-
-            self.init_setvalue=PoseStamped()
-            #pioneer information
-            self.path=pioneerdata.path
-            self.pavement_point=pioneerdata.pavement_point
-            self.init_x=pioneerdata.pioneer_init_x
-            self.init_y=pioneerdata.pioneer_init_y
-            self.init_yaw=pioneerdata.pioneer_init_yaw
-            print("choose simulation with pioneer,max_v:%f,my acceleration:%f,pioneer init_x%f:,pioneer init_y%f:,"%(self.max_v,self.max_a,self.init_x,self.init_y))
+            self.setpioneer_GPS_data(pioneerdata,cardata)
+            
+            print("choose simulation with pioneer in GPS,max_v:%f,my acceleration:%f,pioneer init_x%f:,pioneer init_y%f:,"%(self.max_v,self.max_a,self.init_x,self.init_y))
         elif self.x==2:
-
-            self.max_v=0.2
-            self.max_a=8.0
-            self.max_jerk=1.0 
-            self.checkingdistance=3.0 
-            self.nearestreading_stop=1.0
-
-            self.init_setflag=True
-
-            self.init_setvalue=PoseStamped()
-            #pioneer information
-            self.path=pioneerdata.path
-            self.pavement_point=pioneerdata.pavement_point
-            self.init_x=pioneerdata.pioneer_init_x
-            self.init_y=pioneerdata.pioneer_init_y
-            self.init_yaw=pioneerdata.pioneer_init_yaw
+            self.setpioneer_odom_data(pioneerdata,cardata)
+           
             print("choose simulation with pioneer,max_v:%f,my acceleration:%f,pioneer init_x%f:,pioneer init_y%f:,"%(self.max_v,self.max_a,self.init_x,self.init_y))
 
         else:
-            self.max_v=0.2
-            self.max_a=8.0
-            self.max_jerk=1.0 
-            self.checkingdistance=3.0 
-            self.nearestreading_stop=1.0
+            self.setpioneer_odom_data(pioneerdata,cardata)
 
-            self.init_setflag=False
-
-            self.init_setvalue=Odometry()
-            #pioneer information
-            self.path=pioneerdata.path
-            self.pavement_point=pioneerdata.pavement_point
-            self.init_x=pioneerdata.pioneer_init_x
-            self.init_y=pioneerdata.pioneer_init_y
-            self.init_yaw=pioneerdata.pioneer_init_yaw
             print("choose real world with pioneer,max_v:%f,my acceleration:%f"%(self.max_v,self.max_a))
+        self.start_judgedistance=self.distance_to_left_pavement-self.max_v*self.max_v/(2*self.max_a)-self.bufdistance
+
         # input("are you sure?")
-    def point2point(self,point1,point2,orientation1):
-        orientation2=math.atan2(point2.y-point1.y,point2.x-point1.x)
-        angle=orientation2-orientation1
-        flag_ped=self.nearest_reading<self.nearestreading_stop
-        #this is pavement
-        flag_pavement=point1.y*point1.x/abs(point1.x)<self.checkingdistance and point1.y*point1.x/abs(point1.x)>0.0
-        flag_line=(self.corner_num==0)or(self.corner_num==2)
-        if (orientation2+pi)*180/pi<0.1:
-            orientation2=pi
+    def setcardata(self,pioneerdata,cardata):
+        self.max_v=1.0
+        self.max_a=4.0
+        self.max_jerk=4.0
 
-
-        distance=point1.distance_to(point2)
-        #which stage it is?
-        self.judge_stage(point1,point2)
-
-    
-        if distance<0.5:
-            self.destflag=True
-            self.startflag=True
-            self.v=0.0
-            self.w=0.0
-
-        else:
-            # self.destflag=False
-            # if self.startflag==True:
-
-            #     if abs(angle)*180/pi>1:
-            #         self.v=0.0
-            #         if orientation2-orientation1>pi/2:
-            #             self.w=0.5
-            #             rospy.loginfo("Start moving!!I'm turning in the anticlockwise,my speed:%f,my angular velocity:%f"%(self.v,self.w))
-            #         elif orientation2-orientation1<-pi/2:
-            #             self.w=-0.5
-            #             rospy.loginfo("Start moving!I'm turning in the clockwise,my speed:%f,my angular velocity:%f"%(self.v,self.w))
-            #         else:
-            #             # w=5*math.sin(orientation2-orientation1)#set the maximum angle velocity later on
-            #             self.w=5*(orientation2-orientation1)
-            #             if abs(orientation2-orientation1)>0.5:
-            #                 self.w=(orientation2-orientation1)/abs(orientation2-orientation1)
-            #             rospy.loginfo("Start moving!I'm turning ,my speed:%f,my angular velocity:%f"%(self.v,self.w))
-
-
-
-            #     else:
-            #         self.w=0.0
-            #         # v=8.0
-            #         self.startflag=False
-            #         #add velocity controller here.
-            #         self.v_controller(flag_ped,flag_pavement,flag_line,distance)
-            #         rospy.loginfo("I'm moving in the straightline,my speed:%f,my angular velocity:%f"%(self.v,self.w))
-            # else:
-                # self.w=(orientation2-orientation1)
-                # if abs(orientation2-orientation1)>1:
-                #     self.w=0.05*(orientation2-orientation1)/abs(orientation2-orientation1)
-                # self.v_controller(flag_ped,flag_pavement,flag_line,distance)
-                # rospy.loginfo("I'm in the way ,my speed:%f,my angular velocity:%f"%(self.v,self.w))
-            # self.v_controller(flag_ped,flag_pavement,flag_line,distance)
-            self.v_easycontrol(distance)
-
-            # if point2.
-            # rospy.loginfo("I'm in the way ,my speed:%f,my angular velocity:%f"%(self.v,self.w))
-            #     # v=8.0
-            # rospy.loginfo("After point2point,my speed:%f,my angular velocity:%f"%(self.v,self.w))
-
-    def v_easycontrol(self,distance):
-        if distance<self.max_v*self.max_v/(2*self.max_a) and flag_line:
-            self.deaccelerator()
-            # print(11111111)
-        else:
-            self.acceleretor()
-            # print(22222222)
-        self.out_v=self.v
-        self.out_w=self.w
+        self.nearestreading_stop=2.0
         
-    def v_controller(self,flag_ped,flag_pavement,flag_line,distance): 
-        if flag_pavement==False:
-            if distance<self.max_v*self.max_v/(2*self.max_a) and flag_line:
-                self.deaccelerator()
-                # print(11111111)
-            else:
-                self.acceleretor()
-                # print(22222222)
+        self.init_setflag=True
+        #car information
+        self.path=cardata.path
+        self.init_x=cardata.car_init_x
+        self.init_y=cardata.car_init_y
+        self.init_yaw=cardata.car_init_yaw
+        self.distance_to_left_pavement=cardata.distance_to_left_pavement
+        self.distance_to_right_pavement=cardata.distance_to_right_pavement
+        self.bufdistance=cardata.bufdistance
+        self.length=cardata.length
+        self.width=cardata.width
+        self.final_distance=cardata.final_distance
+        print("choose simulation,max_v:%f,my acceleration:%f"%(self.max_v,self.max_a))
+    def setpioneer_GPS_data(self,pioneerdata,cardata):
+        self.max_v=1.0
+        self.max_a=4.0
+        self.max_jerk=1.0 
+
+        self.nearestreading_stop=1.0
+
+        self.init_setflag=True
+        #pioneer information
+        self.path=pioneerdata.path
+        self.init_x=pioneerdata.pioneer_init_x
+        self.init_y=pioneerdata.pioneer_init_y
+        self.init_yaw=pioneerdata.pioneer_init_yaw
+        self.distance_to_left_pavement=pioneerdata.distance_to_left_pavement
+        self.distance_to_right_pavement=pioneerdata.distance_to_right_pavement
+        self.bufdistance=pioneerdata.bufdistance
+        self.length=pioneerdata.length
+        self.width=pioneerdat.width
+        self.final_distance=pioneerdata.final_distance
+    def setpioneer_odom_data(self,pioneerdata,cardata):
+        self.max_v=1.0
+        self.max_a=4.0
+        self.max_jerk=1.0 
+
+        self.nearestreading_stop=1.0
+
+        self.init_setflag=False
+        #pioneer information
+        self.path=pioneerdata.path
+
+        self.init_x=pioneerdata.pioneer_init_x
+        self.init_y=pioneerdata.pioneer_init_y
+        self.init_yaw=pioneerdata.pioneer_init_yaw
+
+        self.distance_to_left_pavement=pioneerdata.distance_to_left_pavement
+        self.distance_to_right_pavement=pioneerdata.distance_to_right_pavement
+        self.bufdistance=pioneerdata.bufdistance
+        self.length=pioneerdata.length
+        self.width=pioneerdata.width
+        self.final_distance=pioneerdata.final_distance
+
+    def judge_stage(self):
+        if self.distancelength<self.distance_to_left_pavement:
+            self.stage=1
+
+        elif self.distancelength>self.distance_to_right_pavement:
+            self.stage=3
+
         else:
-            if flag_ped==False:
-                self.acceleretor()
-                # print(33333333)
-            else:
-                if flag_line:
-                    self.deaccelerator()
-                    # print(444444444)
-        self.out_v=self.v
-        self.out_w=self.w
-
-    def judge_stage(self,point1,point2):
-        pass
-    def acceleretor(self):
-
-        if self.v<self.max_v:
-            self.v= self.v+self.a*self.dt
-        else:
-            self.v=self.max_v
+            self.stage=2
 
 
-    def deaccelerator(self):
-        self.a=self.max_a
-        if self.v>0.0:
-            self.v= self.v-self.a*self.dt
-        else:
-            self.v=0.0
 
+
+    def setdefault(self,position,yaw):
+        if self.init_setflag==False and self.waitmessage>30:
+            # self.init_setvalue_x=position.x-self.init_x
+            # self.init_setvalue_y=position.y-self.init_y
+            # self.init_setvalue_yaw=yaw-self.init_yaw
+            self.init_setflag=True
+            self.init_x=position.x
+            self.init_y=position.y
+            self.init_yaw=yaw+pi/2
+            # rospy.loginfo("init_x:%f,init_y:%f,init_yaw:%f"%(self.init_x,self.init_y,self.init_yaw))
     def eulerfromquaterion(self,q0,q1,q2,q3):
         
         yaw=math.atan2(2*(q0*q1+q2*q3),1-2*(q1*q1+q2*q2))
@@ -420,58 +384,78 @@ class path_planner():
         # #experiment shows this is the yaw angle, and I don't know why.roll and yaw are different...(have changed the name already)
         # print(yaw*180/pi)
         return roll,pitch,yaw
-    def setdefault(self):
-        if self.init_setflag==False:
-            self.init_setvalue_x=position.x-self.init_x
-            self.init_setvalue_y=position.y-self.init_y
-            self.init_setvalue_yaw=yaw-self.init_yaw
-            self.init_setflag=True
+    def v_controller(self,peoplestates):
+        if self.stage==1:
+            self.acceleration()
+        if self.stage==2:
+            clearflag=self.checking_pedestrians_clear(peoplestates)
+            if clearflag==True:
+                self.acceleration()
+            else:
+                self.deacceleration()
+        if self.stage==3:
+            
+            endflag=self.checking_destination_ditance()
+            if endflag==True:
+                self.deacceleration()
+
+            # rospy.loginfo("################Do I really need to deaccelerate?#################################")
+            # rospy.loginfo("Let's run to the end!!############")
+            # rospy.loginfo("#############Yes, you need deaccelete, pedestrians are there!########################")
+            # rospy.loginfo("#############You get to the destination!########################")
 
 
+    def checking_destination_ditance(self):
+        #could set the acceleration later:
+        endflag=False
+        if self.final_distance-self.bufdistance-self.distancelength<self.v*self.v/(2*self.max_a):
+            endflag=True
 
+        return endflag
+
+#used only in stage 1. And need to consider about the comfort later on.
+    def acceleration(self):
+        self.a=self.max_a
+        self.v=self.v+self.a*self.dt
+        
+        if self.v>self.max_v:
+            self.v=self.max_v
+        else:
+            rospy.loginfo("Accelerate! Don't worry!")
+
+#basic deacceleration model
+    def deacceleration(self):
+#v^2=2*a*s, here we stop at the bufdistance place, in the future, we may consider to slow down at the left_pavement place.
+        a=self.v*self.v/(2*(self.distance_to_left_pavement-self.bufdistance))
+
+        self.v=self.v-self.a*self.dt
+        if self.v<0.0:
+            self.v=0.0
+
+    def checking_pedestrians_clear(self,peoplestates):
+        #we can change the v_pedestrian_max to predict velocity here.
+        clearflag=False
+        t_pedestrian_min=(peoplestates.world_nearest_position_x-self.width/2)/v_pedestrian_max
+        rospy.loginfo("Nearest pedestrian:%f"%peoplestates.world_nearest_position_x)
+        if self.v*t_pedestrian_min>self.distance_to_right_pavement-self.distancelength+self.length:
+            clearflag=True
+            rospy.loginfo("pedestrians are all gone!!!")
+
+        return clearflag
 
     def callback_pose(self,msg):#position
         #=======================================#
+
         fid = open('nearest_reading.dat', 'a')
 
         position = msg.pose.pose.position
         orientation = msg.pose.pose.orientation
 
         roll,pitch,yaw = self.eulerfromquaterion(orientation.x,orientation.y,orientation.z,orientation.w)
-        # self.setdefault()
-
-        # self.car_x = position.x-self.init_setvalue.pose.position.x
-        # self.car_y = position.y-self.init_setvalue.pose.position.y
-        self.car_x = position.x+self.init_x
-        self.car_y = position.y+self.init_y
-        self.car_theta = yaw-self.init_setvalue_yaw
-        # rospy.loginfo("positionx %f"%self.car_x)
-        # rospy.loginfo("positiony %f"%self.car_y)
-
-
-        pt1=Point(self.car_x,self.car_y)
-        pt2=Point(self.path[self.corner_num,0],self.path[self.corner_num,1])
-        #need to change this spee!
-        # v=8.0
-        
-        self.point2point(pt1,pt2,yaw)
-
-        # rospy.loginfo("destflag %f"%self.destflag)
-        # rospy.loginfo("startflag %f"%self.startflag)
-        if self.destflag==True:
-            self.corner_num=self.corner_num+1
-            if self.corner_num==len(self.path):
-                self.corner_num=0
-        # print("corner_num")
-        # print(corner_num)
-        # motion,lineflag,lastlineflag = waypoint_follower(lineflag, lastlineflag, position,yaw)
-        
-
-            #decrease the speed here
-        if self.nearest_reading <= self.nearestreading_stop:
-            self.v = 0.0
-        # print("nearest_reading")
-        # print(self.nearest_reading)
+        self.setdefault(position,yaw)
+        self.car_x = (position.x-self.init_x)*cos(self.init_yaw)-(position.y-self.init_y)*sin(self.init_yaw)
+        self.car_y = -(position.x-self.init_x)*sin(self.init_yaw)+(position.y-self.init_y)*cos(self.init_yaw)
+        self.car_theta = yaw-self.init_yaw
         fid.write("%s\n" %self.nearest_reading)
 
         self.out_v=self.v
@@ -482,36 +466,101 @@ class path_planner():
         angular=msg.twist.twist.angular
 
         self.car_ctrlSpeed=math.sqrt(linear.x**2+linear.y**2+linear.z**2)
+        self.car_ctrlSpeed_x=linear.x
         self.car_ctrlSteer=angular.z
 
     def callback_sick(self,msg):#scan and collision avoidance.
-        ranges=msg.ranges
+        self.ranges=msg.ranges
         self.stopflag=False
-        self.readings=ranges
-        for i in ranges[7:]:
+        self.readings=self.ranges
+
+        for i in self.ranges[len(self.ranges)/2:]:
             if i<5:
                 self.stopflag=True
 
-        # print(stopflag)
-        self.nearest_reading = min(ranges)
-        self.mytime = rospy.get_time()
-        self.sick_readings.write("%2.2f, " %self.mytime)
-        for value in ranges:
-            self.sick_readings.write("%2.4f, " %value)
+        self.nearest_reading = min(self.ranges)
 
-        self.sick_readings.write("\n")
+        
         # print("nearest reading: %2.2f" %nearest_reading)
     def write_msg(self):
-        self.results_file_handle.write("%2.6f %2.6f %2.6f %2.6f %2.6f %2.6f \n" %(rospy.get_time(), self.car_x, self.car_y, self.car_theta, self.car_ctrlSpeed, self.car_ctrlSteer))
-        if self.readings:
-            for value in self.readings:
-                self.pedestrains_readings.write("%2.4f, " %value)
-            self.pedestrains_readings.write("%2.6f %2.6f %2.6f %2.6f %2.6f %2.6f \n" %(rospy.get_time(), self.car_x, self.car_y, self.car_theta, self.car_ctrlSpeed, self.car_ctrlSteer))
-        self.pedestrains_readings.write("\n")
+        if self.init_setflag==True:
+            
+            if self.readings:
+                self.results_file_handle.write("%2.6f %2.6f %2.6f %2.6f %2.6f %2.6f \n" %(rospy.get_time(), self.car_x, self.car_y, self.car_theta, self.car_ctrlSpeed, self.car_ctrlSteer))
+                self.sick_readings.write("%2.2f  "%rospy.get_time())
+                for value in self.readings:
+
+                    self.sick_readings.write("%2.4f  " %value)
+                
+                self.sick_readings.write("\n")
+
+            
+class People_states():
+    def __init__(self):
+        self.position_x_array=[]
+        self.position_y_array=[]
+        self.velocity_x_array=[]
+        self.velocity_y_array=[]
+        self.local_position_x=1e7*np.ones(ranges_num)
+        self.local_position_y=1e7*np.ones(ranges_num)
+        self.world_position_x=1e7*np.ones(ranges_num)
+        self.world_position_y=1e7*np.ones(ranges_num)
+        self.world_nearest_position_x=1e7
+        self.velocity_x=0
+        self.velocity_y=0
+        self.t=0
+
+    def update(self,path_plan):
+        self.current_states(path_plan)
+        self.estimate_states()
+
+    def current_states(self,path_plan):
+        self.states_measurement(path_plan)
+        
+    def estimate_states(self):
+        pass
+
+
+    def states_measurement(self,path_plan):
+        self.world_nearest_position_x=1e7
+        for i in range(0,ranges_num,1):#0,1,2,3,...,ranges_num
+            # if self.local_position_x[i]<0.1:
+            #     self.local_position_x[i]=1e7
+            # if self.local_position_y[i]<0.1:
+            #     self.local_position_y[i]=1e7
+            # rospy.loginfo("i:%f"%i)
+            # rospy.loginfo("path_plan.readings%f",path_plan.readings[i])
+            # rospy.loginfo("local_position_x%f",self.local_position_x[i])
+            self.local_position_x[i]=path_plan.readings[i]*cos(pi-pi*i/ranges_num)
+            self.local_position_y[i]=path_plan.readings[i]*sin(pi-pi*i/ranges_num)
+            #@pay attention to that in the real world,pi-... is in simulation, and pi-... in simulation will make the robot's y in positive axis
+            self.world_position_x[i]=self.local_position_x[i]*cos(path_plan.car_theta-pi/2)-self.local_position_y[i]*sin(path_plan.car_theta-pi/2)+path_plan.car_x
+            self.world_position_y[i]=-self.local_position_x[i]*sin(path_plan.car_theta-pi/2)+self.local_position_y[i]*cos(path_plan.car_theta-pi/2)+path_plan.car_y
+#need to add if pedestrian not going this way...(follow x axis)
+
+        # print(self.local_position_y)
+        # print(self.world_position_x)
+        # print(self.world_position_y)
+            if (self.world_position_y[i]>path_plan.distance_to_left_pavement) and (self.world_position_y[i]<path_plan.distance_to_right_pavement):
+                if self.world_nearest_position_x>abs(self.world_position_x[i]):
+                    self.world_nearest_position_x=abs(self.world_position_x[i])
+                #     print("this is final %f"%i)
+                # rospy.loginfo("world_nearest_position_x:%f"%self.world_nearest_position_x)
+
+        # rospy.loginfo("local_position_x num%f",len(self.local_position_x[0:ranges_num]))
+        # print(path_plan.readings)
+        # print(self.local_position_x)
+        # print(self.world_position_x)
+        
+        
+
 def start():
     rospy.init_node("car_controller")
+    print("Beginning....")
     cardata=Car_data()
+
     pioneerdata=Pioneer_data()
+    peoplestates=People_states()
     path_plan=path_planner()
     path_plan.set_vehicle_data(pioneerdata,cardata)
     motion = Twist()
@@ -521,31 +570,38 @@ def start():
 
 
     while not rospy.is_shutdown():
-        # results_file_handle = open("Published_results.dat","a")
-        rospy.loginfo("In the loop,my speed:%f,my angular velocity:%fmy orientation:%f"%(path_plan.car_ctrlSpeed,path_plan.car_ctrlSteer,path_plan.car_theta))
-        # motion.linear.x=path_plan.out_v
-        # motion.angular.z=path_plan.out_w
-        # # print("motion")
-        # # print(motion.linear.x)
-        # # print("w")
-        # # print(motion.angular.z)
 
-        # path_plan.write_msg()
-        # #for testing the speed
 
-        path_plan.distancelength=path_plan.distancelength+path_plan.car_ctrlSpeed*path_plan.dt
-        rospy.loginfo("distance:%f,  car_x:%f,  car_y:%f"%(path_plan.distancelength,path_plan.car_x,path_plan.car_y))
-        if path_plan.distancelength<4:
-            v=0.2
+        if path_plan.waitmessage<31:
+            path_plan.waitmessage=path_plan.waitmessage+1
+
         else:
-            v=0
-        if path_plan.nearest_reading<1:
-            v=0
-        motion.linear.x=v
-        rospy.loginfo("speed:  %f"%v)
-        path_plan.cmd.publish(motion)
+            path_plan.write_msg()
+            peoplestates.update(path_plan)
+        path_plan.distancelength=path_plan.distancelength+path_plan.car_ctrlSpeed*path_plan.dt
+        # rospy.loginfo("distance_length:%f,  car_x:%f,  car_y:%f"%(path_plan.distancelength,path_plan.car_x,path_plan.car_y))
+
+
+        stage=path_plan.judge_stage()
+        path_plan.v_controller(peoplestates)
+
+
+        # if path_plan.nearest_reading<1.0:
+        #     path_plan.out_v=0.0
+        motion.linear.x=path_plan.out_v
+
+
+        # rospy.loginfo("speed:  %f"%path_plan.out_v)
+        if path_plan.waitmessage>=30:
+
+            
+            path_plan.cmd.publish(motion)
+        else:
+            rospy.loginfo("Don't move!")
+        # rospy.loginfo("In the loop,my speed_x:%f,my angular velocity:%fmy orientation:%f"%(path_plan.car_ctrlSpeed_x,path_plan.car_ctrlSteer,path_plan.car_theta))
+  
         r.sleep()
-        # rospy.Subscriber("/robot/velocity", TwistStamped, callback2)
+
     rospy.spin()
 
 if __name__ == '__main__':
