@@ -419,7 +419,6 @@ def initStateVectors(rec,sampleSize):
     vys = [random.uniform(0,1) for i in range(sampleSize)]
 
     return([list(s) for s in zip(xs,ys,vxs,vys)])
-
 class particle:
     def __init__(self,svs,x_dsampleSize):
         #particle states here.
@@ -430,6 +429,10 @@ class particle:
     def distance_sq(self,x1,y1,x2,y2):
         distancesq=((x1-x2)*(x1-x2)+(y1-y2)*(y1-y2))
         return distancesq
+
+class detect_area:
+    def __init__(self,x_t,x_d,y_l,y_r):
+        self.rec=[x_t,x_d,y_l,y_r]
 class Estimation():
     def __init__(self):
         self.pose_x=0.0
@@ -504,10 +507,6 @@ class Weight():
         for i in add_array:
             self.particle_gauss_no[i]+=1
 
-class detect_area:
-    def __init__(self,x_t,x_d,y_l,y_r):
-        self.rec=[x_t,x_d,y_l,y_r]
-
 def resampling_gauss(particle,weight,x_dsampleSize,v_x,v_y,dt):
 
     #resampling process 1: at local area
@@ -532,6 +531,8 @@ def resampling_gauss(particle,weight,x_dsampleSize,v_x,v_y,dt):
         rec=[particle.svs[i][0]+(v_x+random.uniform(0,0.3))*dt,particle.svs[i][0]+(v_x-random.uniform(0,0.3))*dt,particle.svs[i][1]+(v_y+random.uniform(0,0.3))*dt,particle.svs[i][1]-(v_y+random.uniform(0,0.3))*dt]
         new_particle.extend(initStateVectors(rec,weight.particle_gauss_no[i]))
     particle.svs=new_particle
+
+    #output:updated particle states
             
 class People_states():
     def __init__(self):
@@ -567,9 +568,15 @@ class People_states():
         self.v_x=0
 
     def update(self,path_plan):
- 
+
         self.world_position_x_last_mean=self.world_position_x_mean
         self.world_position_y_last_mean=self.world_position_y_mean
+
+
+    # def current_states(self,path_plan):
+    #     self.states_measurement(path_plan)
+        
+
 
 
     def states_measurement(self,path_plan):
@@ -589,11 +596,7 @@ class People_states():
             # rospy.loginfo("i:%f"%i)
             # rospy.loginfo("path_plan.readings:%f"%len(path_plan.readings))
             # rospy.loginfo("len(local_position_y):%f"%len(self.local_position_y))
-            self.local_position_x[i]=path_plan.readings[i]*cos(pi*i/ranges_num)
-            self.local_position_y[i]=path_plan.readings[i]*sin(pi*i/ranges_num)
-            #@pay attention to that in the real world,pi-... is in simulation, and pi-... in simulation will make the robot's y in positive axis
-            self.world_position_x[i]=self.local_position_x[i]*cos(path_plan.car_theta-pi/2)-self.local_position_y[i]*sin(path_plan.car_theta-pi/2)+path_plan.car_x
-            self.world_position_y[i]=-self.local_position_x[i]*sin(path_plan.car_theta-pi/2)+self.local_position_y[i]*cos(path_plan.car_theta-pi/2)+path_plan.car_y
+
         #need to add if pedestrian not going this way...(follow x axis)
 
         # print(self.local_position_y)
@@ -603,6 +606,11 @@ class People_states():
             # if (self.world_position_y[i]>path_plan.distance_to_left_pavement) and (self.world_position_y[i]<path_plan.distance_to_right_pavement):
 
             if path_plan.readings[i]<path_plan.scanarea:
+                self.local_position_x[i]=path_plan.readings[i]*cos(pi*i/ranges_num)
+                self.local_position_y[i]=path_plan.readings[i]*sin(pi*i/ranges_num)
+                #@pay attention to that in the real world,pi-... is in simulation, and pi-... in simulation will make the robot's y in positive axis
+                self.world_position_x[i]=self.local_position_x[i]*cos(path_plan.car_theta-pi/2)-self.local_position_y[i]*sin(path_plan.car_theta-pi/2)+path_plan.car_x
+                self.world_position_y[i]=-self.local_position_x[i]*sin(path_plan.car_theta-pi/2)+self.local_position_y[i]*cos(path_plan.car_theta-pi/2)+path_plan.car_y
                 sum_x=sum_x+self.world_position_x[i]
                 sum_y=sum_y+self.world_position_y[i]
                 self.point_no=self.point_no+1
@@ -624,7 +632,6 @@ class People_states():
 
 def start():
     rospy.init_node("car_controller")
-
     print("Beginning....")
     cardata=Car_data()
 
@@ -643,16 +650,13 @@ def start():
     RMES=[]
 
     r=rospy.Rate(path_plan.freq)#60hz
-    dt=1.0/path_plan.freq
+    dt=1/path_plan.freq
     i=0
     while not rospy.is_shutdown():
-
-     
+        
         
 
         #wait messages
-        # print("i:%d"%i)
-        # i=i+1
         if path_plan.waitmessage<31:
             path_plan.waitmessage=path_plan.waitmessage+1
         else:
@@ -685,37 +689,34 @@ def start():
             # measurement positions,()
             #output:guass possibility for each of them. next time how many paricles will evolve from the original one.
             if peoplestates.point_no!=0:
-                if peoplestates.t==1:
-                    weight=Weight(Particle_info)
-                    weight.gauss_possibility(Particle_info,peoplestates)
-
-                    #Normalization
-                    weight.normalization(x_dsampleSize)
-
-                #3)prior estimation (current estimation)
-                    estimation=Estimation()
-                    for i in range(0,x_dsampleSize):
-                        estimation.pose_x=Particle_info.svs[i][0]*weight.gauss[i]+estimation.pose_x
-                        estimation.pose_y=Particle_info.svs[i][1]*weight.gauss[i]+estimation.pose_y
-                    RMES.append(math.sqrt((estimation.pose_x-peoplestates.world_position_x_mean)**2+(estimation.pose_y-peoplestates.world_position_y_mean)**2))
-                #4)Resampling(twice along with the motion)
-                    estimation.estimate_velocity(peoplestates,dt,peoplestates.t)
-
-                    resampling_gauss(Particle_info,weight,x_dsampleSize,estimation.v_x,estimation.v_y,dt)
-                    peoplestates.update(path_plan)
-
-                #5)posterior estimation
-                    estimation=Estimation()
-                    for i in range(0,x_dsampleSize):
-                        estimation.pose_x=Particle_info.svs[i][0]+estimation.pose_x
-                        estimation.pose_y=Particle_info.svs[i][1]+estimation.pose_y
-                    estimation.pose_x=estimation.pose_x/x_dsampleSize
-                    estimation.pose_y=estimation.pose_y/x_dsampleSize
-                    print("estimation_pose_x:%f"%estimation.pose_x)
-                    print("estimation_pose_y:%f"%estimation.pose_y)
-                    print("peoplestate.pose_x%f"%peoplestates.world_position_x_mean)
-                    print("peoplestate.pose_y%f"%peoplestates.world_position_y_mean)
                 peoplestates.t=1
+                weight=Weight(Particle_info)
+                weight.gauss_possibility(Particle_info,peoplestates)
+
+                #Normalization
+                weight.normalization(x_dsampleSize)
+
+            #3)prior estimation (current estimation)
+                estimation=Estimation()
+                for i in range(0,x_dsampleSize):
+                    estimation.pose_x=Particle_info.svs[i][0]*weight.gauss[i]+estimation.pose_x
+                    estimation.pose_y=Particle_info.svs[i][1]*weight.gauss[i]+estimation.pose_y
+                RMES.append(math.sqrt((estimation.pose_x-peoplestates.world_position_x_mean)**2+(estimation.pose_y-peoplestates.world_position_y_mean)**2))
+            #4)Resampling(twice along with the motion)
+                estimation.estimate_velocity(peoplestates,dt,peoplestates.t)
+
+                resampling_gauss(Particle_info,weight,x_dsampleSize,estimation.v_x,estimation.v_y,dt)
+                peoplestates.update(path_plan)
+
+            #5)posterior estimation
+                estimation=Estimation()
+                for i in range(0,x_dsampleSize):
+                    estimation.pose_x=Particle_info.svs[i][0]+estimation.pose_x
+                    estimation.pose_y=Particle_info.svs[i][1]+estimation.pose_y
+                estimation.pose_x=estimation.pose_x/x_dsampleSize
+                estimation.pose_y=estimation.pose_y/x_dsampleSize
+                print("estimation_pose_x:%f"%estimation.pose_x)
+                print("estimation_pose_y:%f"%estimation.pose_y)
             else:
                 peoplestates.t=0
         else:
@@ -727,4 +728,3 @@ def start():
     rospy.spin()
 
 if __name__ == '__main__':
-    start()#     listener()

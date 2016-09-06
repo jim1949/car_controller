@@ -267,9 +267,11 @@ def initStateVectors(rec,sampleSize):
 #2.particle positioning.searching step./+tracking new particles, then we need to resample it!
 # place dogs....
 def start():
+
+    
     #1).initialization
     detectarea=detect_area(-10.0,10.0,-.3,-7.0)
-    initialdata=initial_data(detectarea)
+    # initialdata=initial_data(detectarea)
     measure=measurement()
     t=0
     dt=1
