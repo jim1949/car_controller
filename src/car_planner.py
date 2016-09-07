@@ -35,7 +35,7 @@ class Car_data():
         self.right_pavement_pose=-5.0
         #based on vehicle and pedestrians
         self.bufdistance=2.0
-        self.final_pose=-8.0
+        self.final_pose=-9.0
 
         self.length=1.5
         self.width=1.5
@@ -49,10 +49,10 @@ class Pioneer_data():
 
 
         self.bufdistance =0.5
-        self.final_pose =-8.0
+        self.final_pose =-9.0
 
-        self.length=0.5
-        self.width=0.5
+        self.length=1.5
+        self.width=1.5
 
         self.left_pavement_pose=-4.0
         self.right_pavement_pose=-5.0
@@ -195,7 +195,7 @@ class path_planner():
             self.setpioneer_odom_data(pioneerdata,cardata)
 
             print("choose real world with pioneer,max_v:%f,my acceleration:%f"%(self.max_v,self.max_a))
-        self.start_judgedistance=self.left_pavement_pose-self.max_v*self.max_v/(2*self.max_a)-self.bufdistance
+        # self.start_judgedistance=self.left_pavement_pose-self.max_v*self.max_v/(2*self.max_a)-self.bufdistance
 
         # input("are you sure?")
     def setcardata(self,pioneerdata,cardata):
@@ -240,8 +240,8 @@ class path_planner():
         self.width=pioneerdat.width
         self.final_pose=pioneerdata.final_pose
     def setpioneer_odom_data(self,pioneerdata,cardata):
-        self.max_v=1.0
-        self.max_a=0.5
+        self.max_v=0.5
+        self.max_a=0.1
         self.max_jerk=1.0 
 
         self.nearestreading_stop=1.0
@@ -397,11 +397,11 @@ class Weight():
             self.gauss[i]=np.exp(-0.5*distancesq/(sigma*sigma)) / (np.sqrt(2*np.pi)*sigma)
 
         self.sum_gauss=sum(self.gauss)
-        print("sum_gauss%f:"%self.sum_gauss)
+        # print("sum_gauss%f:"%self.sum_gauss)
 
         # # print("i:%d"%self.i)
 
-        print(self.gauss)
+        # print(self.gauss)
         return self.gauss
 
     def normalization(self,x_dsampleSize):
@@ -547,10 +547,10 @@ class People_states():
             self.world_position_x_mean=sum_x/self.point_no
             self.world_position_y_mean=sum_y/self.point_no
 
-        rospy.loginfo("world_nearest_x:%f,y:%f"%(self.world_nearest_position_x,self.world_nearest_position_y))
+        # rospy.loginfo("world_nearest_x:%f,y:%f"%(self.world_nearest_position_x,self.world_nearest_position_y))
         # rospy.loginfo("world_position_x:%f,y:%f"%(self.world_position_x,self.world_position_y))
-        print(self.world_position_x)
-        print(self.world_position_y)
+        # print(self.world_position_x)
+        # print(self.world_position_y)
  #initial particle position area
 def initStateVectors(rec,sampleSize):
     sampleSize=int(sampleSize)
@@ -559,9 +559,10 @@ def initStateVectors(rec,sampleSize):
     vxs = [random.uniform(0,1) for i in range(sampleSize)]
     vys = [random.uniform(0,1) for i in range(sampleSize)]
 
-    return([list(s) for s in zip(xs,ys,vxs,vys)])   
+    return([list(s) for s in zip(xs,ys,vxs,vys)]) 
+ 
 
-def motion_plan(estimation,path_plan):
+def motion_plan(estimation,path_plan,motionstate,dt):
     s_y_min=abs(path_plan.left_pavement_pose-path_plan.car_y)-path_plan.length/2
     s_y_max=abs(path_plan.car_y-path_plan.right_pavement_pose)+path_plan.length/2
     #1.minimum/maximum time to get to the pavement and duration
@@ -573,21 +574,79 @@ def motion_plan(estimation,path_plan):
     x_l=path_plan.car_x-abs(estimation.v_x*tmax_car)-path_plan.width/2
     y_l=path_plan.left_pavement_pose
     y_r=path_plan.right_pavement_pose
-    rospy.loginfo("buffer area:x_l:%f,x_u:%f,y_l:%f,y_r:%f"%(x_l,x_u,y_l,y_r))
-    #3.if people is in the buffer area.
-    if (estimation.pose_x in (x_l,x_u)) and (estimation.pose_y in (y_r,y_l)):
-        rospy.loginfo("The target is in the buffer area! People.x:%f,y:%f,speed:%f,Car.x:%f,y:%f,speed:%f"%(estimation.pose_x,estimation.pose_y,estimation.v_x,path_plan.car_x,path_plan.car_y,path_plan.car_ctrlSpeed))
 
+    path_plan.car_ctrlSpeed=path_plan.car_ctrlSpeed+0.035
 
+    #3 start stage 1:
+    if path_plan.car_y>-2:
+        v,a=accelerate(path_plan.car_ctrlSpeed,path_plan.max_v,path_plan.max_a,dt)
+        rospy.loginfo("The target is moving towards the pavement! People.x:%f,y:%f,speed:%f,Car.x:%f,y:%f,speed:%f acceleration:%f\n "%(estimation.pose_x,estimation.pose_y,estimation.v_x,path_plan.car_x,path_plan.car_y,path_plan.car_ctrlSpeed,a))
 
-class bufferarea():
+    else:
+        #second stage 2: Slow down?
+        #4.if people is in the buffer area.
+        # print((estimation.pose_x >x_l and estimation.pose_x< x_u) )
+        # print((estimation.pose_y>y_r and estimation.pose_y<y_l))
+        v=path_plan.car_ctrlSpeed
+        a=0
+        if (estimation.pose_x >x_l and estimation.pose_x< x_u) and (estimation.pose_y>y_r and estimation.pose_y<y_l):
+            #calculate the rest distance to the pavement.
+            distance_to_pavement=abs(path_plan.left_pavement_pose-path_plan.car_y)-path_plan.car_ctrlSpeed*dt
+            
+            a=abs(v*v/(2*(distance_to_pavement-path_plan.length)))
+            v=v-a*dt
+            if v<0:
+                v=0
+            rospy.loginfo("buffer area:x_l:%f,x_u:%f,y_l:%f,y_r, car:x:%f, y:%f:%f"%(x_l,x_u,y_l,y_r,path_plan.car_x,path_plan.car_y))
+
+            rospy.loginfo("The target is in the buffer area! People.x:%f,y:%f,speed:%f,Car.x:%f,y:%f,speed:%f acceleration:%f\n "%(estimation.pose_x,estimation.pose_y,estimation.v_x,path_plan.car_x,path_plan.car_y,path_plan.car_ctrlSpeed,a))
+            motionstate.stopflag=0
+        #5.if people is out of the buffer area.
+        else:
+            motionstate.stopflag=motionstate.stopflag+1
+            if motionstate.stopflag>3:
+                #Third stage 3: 
+                distance_to_final_pose=abs(path_plan.final_pose-path_plan.car_y)-path_plan.car_ctrlSpeed*dt
+
+                if path_plan.car_y<path_plan.left_pavement_pose+2:
+                    if path_plan.car_y<path_plan.final_pose+1.5:
+                        #decelerate.
+                        a=v*v/(2*(distance_to_final_pose))
+                        # a=path_plan.max_a
+                        v=v-a*dt
+                        if v<0:
+                            v=0
+                        rospy.loginfo("The target is going to the final end!!! Car.x:%f,y:%f,speed:%f acceleration:%f\n "%(path_plan.car_x,path_plan.car_y,path_plan.car_ctrlSpeed,a))
+
+                    else:
+                    #Accelerate.
+                        rospy.loginfo("The target is leaving the pavement! ########################################Car.x:%f,y:%f,speed:%f acceleration:%f\n "%(path_plan.car_x,path_plan.car_y,path_plan.car_ctrlSpeed,a))
+                        v,a=accelerate(path_plan.car_ctrlSpeed,path_plan.max_v,path_plan.max_a,dt)
+                        print(v)
+                else:
+                    v=0
+                    rospy.loginfo("stop at the pavement.")
+            else:
+                v=0
+                rospy.loginfo("struggling!")
+        rospy.loginfo("position.x:%f,y:%f,v:%ffinal:%f"%(path_plan.car_x,path_plan.car_y,v,(path_plan.final_pose)))
+            
+
+    return v,a
+
+def accelerate(v,max_v,max_a,dt):
+
+    # print(max_a)
+    v=max_a*dt+v
+    if v>max_v+0.035:
+        v=max_v
+    a=max_a
+    return v,a
+
+class Motion_state():
     def __init__(self):
         self.rec=[]
-
-
-
-
-
+        self.stopflag=0
 
 
 
@@ -600,12 +659,14 @@ def start():
     pioneerdata=Pioneer_data()
     peoplestates=People_states()
     path_plan=path_planner()
-
+    estimation=Estimation()
     path_plan.set_vehicle_data(pioneerdata,cardata)
     motion = Twist()
+    motionstate=Motion_state()
 
     #particle initialization.
-    detectarea=detect_area(-10.0,10.0,-4.0,-6.0)
+
+    detectarea=detect_area(-3.0,3.0,-4.0,-6.0)
     # initialdata=initial_data(detectarea)
     x_dsampleSize=100
     Particle_info=particle(initStateVectors(detectarea.rec,x_dsampleSize),x_dsampleSize)
@@ -630,7 +691,7 @@ def start():
 
         # if path_plan.nearest_reading<1.0:
         #     path_plan.out_v=0.0
-        motion.linear.x=path_plan.out_v
+
         # motion.linear.x=1.0
 
         # rospy.loginfo("speed:  %f"%path_plan.out_v)
@@ -678,10 +739,15 @@ def start():
                     print("estimation_pose_y:%f"%estimation.pose_y)
                     print("peoplestate.pose_x%f"%peoplestates.world_position_x_mean)
                     print("peoplestate.pose_y%f"%peoplestates.world_position_y_mean)
-                    motion_plan(estimation,path_plan)
+
                 peoplestates.t=1
             else:
+                estimation=Estimation()
                 peoplestates.t=0
+            v,a=motion_plan(estimation,path_plan,motionstate,dt)
+            rospy.loginfo("velocity:%f"%v)
+            motion.linear.x=v
+            path_plan.cmd.publish(motion)
         else:
             rospy.loginfo("Don't move!")
         # rospy.loginfo("In the loop,my speed_x:%f,my angular velocity:%fmy orientation:%f"%(path_plan.car_ctrlSpeed_x,path_plan.car_ctrlSteer,path_plan.car_theta))
@@ -690,7 +756,7 @@ def start():
         #input: estimation.pose_x,estimation.pose_y,estimation.v_x,estimation.v_y,estimation.v_x_min/max,
         #input: path_plan.car_x,path_plan.car_y,path_plan.car_ctrlSpeed
 
-        path_plan.cmd.publish(motion)
+        
         r.sleep()
 
     rospy.spin()

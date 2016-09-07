@@ -20,6 +20,7 @@ plt.plot(car_y,car_speed)
 
 
 plt.plot(car_y,car_speed_average*np.ones(len(car_speed)))
+plt.xlim([0.0,-10.0])
 plt.show()
 plt.plot(t,car_speed)
 plt.show()
