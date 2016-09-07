@@ -25,7 +25,6 @@ class people_planner():
         self.dt=1.0/self.freq
         self.t=0.0
         self.waittime=0.0
-        self.v=0.0
         self.distance=0.0
         self.stopflag=False
         self.x=0.0
@@ -64,9 +63,10 @@ class people_planner():
         #     v_out=self.v
 
         self.t=self.t+self.dt
+        v=0.0
         if self.stopflag==False:
 	        if self.t>self.stopping_point_time[self.i]:
-	        	self.v=0.0
+	        	v=0.0
 	        	self.waittime=self.waittime+self.dt
 	        	if self.waittime>self.stopping_time[self.i]:
 	        		self.waittime=0.0
@@ -74,10 +74,10 @@ class people_planner():
 	        		if self.i==len(self.stopping_time):
 	        			self.stopflag=True
 			else:
-				self.v=0.5
+				v=0.5
 		else:
 			rospy.loginfo("People rest at point %f" %self.i)
-        v_out=self.v
+        v_out=v
         
         return v_out
 
