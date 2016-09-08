@@ -43,8 +43,8 @@ class people_planner():
             self.subscriber=rospy.Subscriber("/pose",Odometry,self.callback_pose)
             self.cmd=rospy.Publisher("RosAria/cmd_vel",Twist,queue_size=10)
 
-        self.stopping_point_time=[1,4,6]#random place, random position
-        self.stopping_time =[1,1,1]
+        self.stopping_point_time=[1,2,2]#random place, random position
+        self.stopping_time =[1,5,10]
 
 
 
@@ -66,7 +66,7 @@ class people_planner():
         v=0.0
         if self.stopflag==False:
 	        if self.t>self.stopping_point_time[self.i]:
-	        	v=0.0
+	        	
 	        	self.waittime=self.waittime+self.dt
 	        	if self.waittime>self.stopping_time[self.i]:
 	        		self.waittime=0.0
@@ -74,14 +74,12 @@ class people_planner():
 	        		if self.i==len(self.stopping_time):
 	        			self.stopflag=True
 			else:
-				v=0.5
+				v=0.2
 		else:
 			rospy.loginfo("People rest at point %f" %self.i)
-        v_out=v
+        v_out=0.1
         
         return v_out
-
-
 
 
 def start():
