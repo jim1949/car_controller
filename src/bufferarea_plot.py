@@ -34,7 +34,7 @@ def plot_3d(ax,x,y,z,rec_x,rec_y,color1,color2):
         # side.set_alpha(0.5)
         ax.add_collection3d(side)
     ax.set_xlim3d(-5,5)
-    ax.set_ylim3d(-10,2)
+    ax.set_ylim3d(-15,2)
     ax.set_zlim3d(0,z[-1])
     ax.set_xlabel("x axis")
     ax.set_ylabel("y axis")
@@ -59,11 +59,15 @@ x_u=bufferarea[:,4]
 x_l=bufferarea[:,5]
 y_l=bufferarea[:,6]
 y_r=bufferarea[:,7]
+
 car_x=bufferarea[:,8]
 car_y=bufferarea[:,9]
 car_ctrlSpeed=bufferarea[:,10]
-real_pose_x=bufferarea[:,11]
-real_pose_y=bufferarea[:,12]
+observe_pose_x=bufferarea[:,11]
+observe_pose_y=bufferarea[:,12]
+
+real_pose_x=bufferarea[:,13]
+real_pose_y=bufferarea[:,14]
 speederror=estimation_v_x-car_ctrlSpeed
 
 car_rec_x=[-0.5,0.5]
@@ -86,6 +90,8 @@ ax=plot_3d(ax,car_x,car_y,t,car_rec_x,car_rec_y,'y','y')
 # ax.scatter(car_x, car_y, t, c='r', marker='o')
 
 ax=plot_3d(ax,real_pose_x,real_pose_y,t,p_rec_x,p_rec_y,'red','b')
+
+
 
 # ax.scatter(estimation_pose_x,estimation_pose_y,t,c='b', marker='o')
 

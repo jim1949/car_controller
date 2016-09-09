@@ -398,7 +398,7 @@ class Weight():
             self.gauss[i]=np.exp(-0.5*distancesq/(sigma*sigma)) / (np.sqrt(2*np.pi)*sigma)
 
         self.sum_gauss=sum(self.gauss)
-        # print("sum_gauss%f:"%self.sum_gauss)
+        print("sum_gauss%f:"%self.sum_gauss)
 
         # # print("i:%d"%self.i)
 
@@ -406,11 +406,14 @@ class Weight():
         return self.gauss
 
     def normalization(self,x_dsampleSize):
+        
 
         for i in range(0,x_dsampleSize):
-
-            self.gauss[i]=self.gauss[i]/self.sum_gauss
-            self.particle_gauss_no[i]=int(x_dsampleSize*self.gauss[i])
+            if self.sum_gauss==0:
+                self.gauss[i]=1
+            else:
+                self.gauss[i]=self.gauss[i]/self.sum_gauss
+                self.particle_gauss_no[i]=int(x_dsampleSize*self.gauss[i])
         left_i=int(x_dsampleSize-sum(self.particle_gauss_no))
         # print(left_i)
         #usually here left_i>0,so we need to make sure it can be 0.
@@ -486,13 +489,12 @@ class People_states():
         self.world_position_y_last_mean=1e3
 
         self.point_no=0
-        self.velocity_x=0.0
-        self.velocity_y=0.0
+        self.v_x=0.0
+        self.v_y=0.0
 
-        self.estimate_x=[]
-        self.estimate_y=[]
+        # self.estimate_x=[]
+        # self.estimate_y=[]
 
-        self.possibility=[]
 
         self.length=1
         self.width=1
@@ -691,7 +693,7 @@ def start():
 
     #particle initialization.
 
-    detectarea=detect_area(-3.0,3.0,-3.0,-6.0)
+    detectarea=detect_area(-2.0,2.0,-4.0,-6.0)
     # initialdata=initial_data(detectarea)
     x_dsampleSize=100
     Particle_info=particle(initStateVectors(detectarea.rec,x_dsampleSize),x_dsampleSize)
@@ -748,6 +750,7 @@ def start():
                         estimation.pose_y=Particle_info.svs[i][1]*weight.gauss[i]+estimation.pose_y
                     RMES.append(math.sqrt((estimation.pose_x-peoplestates.world_position_x_mean)**2+(estimation.pose_y-peoplestates.world_position_y_mean)**2))
                 #4)Resampling(twice along with the motion)
+                    #using obeservation velocity as prior velocity
                     estimation.estimate_velocity(peoplestates,dt,peoplestates.t)
 
                     resampling_gauss(Particle_info,weight,x_dsampleSize,estimation.v_x,estimation.v_y,dt)
@@ -760,6 +763,9 @@ def start():
                         estimation.pose_y=Particle_info.svs[i][1]+estimation.pose_y
                     estimation.pose_x=estimation.pose_x/x_dsampleSize
                     estimation.pose_y=estimation.pose_y/x_dsampleSize
+                    #posterior estimation velocity
+                    # estimation.v_x=(estimation.pose_x-peoplestates.world_position_x_mean)/dt
+                    # estimation.v_y=(estimation.pose_y-peoplestates.world_position_y_mean)/dt
                     print("estimation_pose_x:%f"%estimation.pose_x)
                     print("estimation_pose_y:%f"%estimation.pose_y)
                     print("peoplestate.pose_x%f"%peoplestates.world_position_x_mean)
@@ -773,7 +779,7 @@ def start():
 
             rospy.loginfo("velocity:%f"%path_plan.v)
             motion.linear.x=path_plan.v
-            # path_plan.cmd.publish(motion)
+            path_plan.cmd.publish(motion)
         else:
             rospy.loginfo("Don't move!")
         # rospy.loginfo("In the loop,my speed_x:%f,my angular velocity:%fmy orientation:%f"%(path_plan.car_ctrlSpeed_x,path_plan.car_ctrlSteer,path_plan.car_theta))

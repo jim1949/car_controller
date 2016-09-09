@@ -1,0 +1,4 @@
+<launch> 
+   <node name="car_controller" pkg="car_controller" type="car_planner_based_on_s.py"> </node>node>
+   <node name="people_controller" pkg="car_controller" type="people_controller.py"> </node>node>
+</launch>

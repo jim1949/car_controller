@@ -31,7 +31,8 @@ class people_planner():
         self.y=0.0
         self.i=0
         # self.status_environment=int(input("1,2?..."))
-        self.status_environment=int(input("1:simulation, 2: real world\n"))
+        # self.status_environment=int(input("1:simulation, 2: real world\n"))
+        self.status_environment=1
         print(self.status_environment)
         # print(self.status_environment)
         if self.status_environment==1:
@@ -77,7 +78,7 @@ class people_planner():
 				v=0.2
 		else:
 			rospy.loginfo("People rest at point %f" %self.i)
-        v_out=0.1
+        v_out=-0.1
         
         return v_out
 
