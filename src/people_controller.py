@@ -8,6 +8,7 @@ from sensor_msgs.msg import LaserScan
 import numpy as np
 import math
 from math import pi,sin,cos
+import random
 # from function.waypoint_following import waypoint_follower
 # from function.point2point import point2point
 # from function.point2point2 import point2point
@@ -32,7 +33,7 @@ class people_planner():
         self.i=0
         # self.status_environment=int(input("1,2?..."))
         # self.status_environment=int(input("1:simulation, 2: real world\n"))
-        self.status_environment=1
+        self.status_environment=2
         print(self.status_environment)
         # print(self.status_environment)
         if self.status_environment==1:
@@ -44,7 +45,7 @@ class people_planner():
             self.subscriber=rospy.Subscriber("/pose",Odometry,self.callback_pose)
             self.cmd=rospy.Publisher("RosAria/cmd_vel",Twist,queue_size=10)
 
-        self.stopping_point_time=[1,2,2]#random place, random position
+        self.stopping_point_time=[1,12,22]#random place, random position
         self.stopping_time =[1,5,10]
 
 
@@ -78,8 +79,10 @@ class people_planner():
 				v=0.2
 		else:
 			rospy.loginfo("People rest at point %f" %self.i)
+        # v_out=random.uniform(0,1)
+        # v_out=0.5*random.uniform(0,1)
+        # v_out=0.1*self.i
         v_out=-0.1
-        
         return v_out
 
 

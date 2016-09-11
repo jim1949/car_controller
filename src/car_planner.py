@@ -779,7 +779,7 @@ def start():
 
             rospy.loginfo("velocity:%f"%path_plan.v)
             motion.linear.x=path_plan.v
-            path_plan.cmd.publish(motion)
+            # path_plan.cmd.publish(motion)
         else:
             rospy.loginfo("Don't move!")
         # rospy.loginfo("In the loop,my speed_x:%f,my angular velocity:%fmy orientation:%f"%(path_plan.car_ctrlSpeed_x,path_plan.car_ctrlSteer,path_plan.car_theta))
@@ -787,7 +787,7 @@ def start():
         #motion plan
         #input: estimation.pose_x,estimation.pose_y,estimation.v_x,estimation.v_y,estimation.v_x_min/max,
         #input: path_plan.car_x,path_plan.car_y,path_plan.car_ctrlSpeed
-
+        print(path_plan.readings)
         
         r.sleep()
 

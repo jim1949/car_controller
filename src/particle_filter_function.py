@@ -23,7 +23,7 @@ class measurement():
     def __init__(self):
         self.pose_xy = np.loadtxt("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/people_position.dat")
         #every two rows is position x row, and position y row
-        self.pose_x=[]
+        self.pose_x=[]#true
         self.pose_y=[]
 
         self.pose_x_mean=0.0

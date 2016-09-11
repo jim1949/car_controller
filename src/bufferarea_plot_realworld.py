@@ -71,10 +71,10 @@ real_pose_x=bufferarea[:,13]
 real_pose_y=bufferarea[:,14]
 speederror=estimation_v_x-car_ctrlSpeed
 
-car_rec_x=[-0.5,0.5]
-car_rec_y=[-0.5,0.5]
-p_rec_x=[-0.5,0.5]
-p_rec_y=[-0.5,0.5]
+car_rec_x=[-0.25,0.25]
+car_rec_y=[-0.25,0.25]
+p_rec_x=[-0.25,0.25]
+p_rec_y=[-0.25,0.25]
 
 fig = plt.figure()
 ax = fig.gca(projection='3d')
