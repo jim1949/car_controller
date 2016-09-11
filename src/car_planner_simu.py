@@ -337,10 +337,13 @@ class path_planner():
                 self.sick_readings.write("%2.4f  "%rospy.get_time())
                 for value in self.readings:
                     self.sick_readings.write("%2.4f  " %value)              
-                self.sick_readings.write("\n")
+
                 for i in range(0,ranges_num):
                     self.people_position.write("%2.4f "%peoplestates.world_position_x[i])
 
+                for i in range(0,ranges_num):
+                    self.people_position.write("%2.4f "%peoplestates.world_position_y[i])
+                self.sick_readings.write("\n")
                 # self.people_position.write("%2.4f \n"%self.people_x)
                 # for i in range(0,ranges_num):
                 #     self.people_position.write("%2.4f "%peoplestates.world_position_y[i])

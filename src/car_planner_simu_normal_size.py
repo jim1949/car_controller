@@ -134,6 +134,8 @@ class path_planner():
         self.people_subscriber=rospy.Subscriber("/people/pose",PoseStamped,self.callback_people_pose)
         # self.x=int(input("0:simulation only,1:simulation for pioneer with GPS sensor,2:simulation for pioneer with odometry sensor,3:real world for pioneer\n"))
         self.bufferarea=open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/bufferarea.dat","a")
+        # self.sick_readings = open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/pod_simulation_sick_data.dat", "a")
+        self.sick_readings = open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/pod__sick_data.dat", "a")
         self.x=2
         print(self.x)
 
@@ -144,7 +146,7 @@ class path_planner():
             self.subscriber2=rospy.Subscriber("/robot/velocity", TwistStamped, self.callback_velocity)
             self.subscriber3=rospy.Subscriber("/robot/sick",LaserScan,self.callback_sick)
             print("choose simulation,max_v")
-            self.sick_readings = open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/pod_simulation_sick_data.dat", "a")
+
  
             self.results_file_handle = open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/pod_simulation_cardata.dat","a")
             self.people_file=open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/people_position_simulation.dat","a")
@@ -155,7 +157,7 @@ class path_planner():
             self.subscriber2=rospy.Subscriber("/robot/velocity", TwistStamped, self.callback_velocity)
             self.subscriber3=rospy.Subscriber("/robot/sick",LaserScan,self.callback_sick)
             print("choose simulation with pioneer with GPS sensor")
-            self.sick_readings = open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/pioneer_simulation_GPS_sick_data.dat", "a")
+
             self.results_file_handle = open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/pioneer_simulation_GPS_cardata.dat","a")
             self.people_file=open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/people_position_simulation.dat","a")
         elif self.x==2:
@@ -164,7 +166,7 @@ class path_planner():
             self.subscriber2=rospy.Subscriber("/robot/odom", Odometry, self.callback_velocity)
             self.subscriber3=rospy.Subscriber("/robot/sick",LaserScan,self.callback_sick)
             print("choose simulation with pioneer with odometry sensor")
-            self.sick_readings = open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/pioneer_simulation_sick_data.dat", "a")
+
             self.results_file_handle = open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/pioneer_simulation_cardata.dat","a")
             self.people_file=open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/people_position_simulation.dat","a")
 
@@ -174,7 +176,7 @@ class path_planner():
             self.subscriber2=rospy.Subscriber("/pose", Odometry, self.callback_velocity)
             self.subscriber3=rospy.Subscriber("/scan",LaserScan,self.callback_sick)
             print("choose real world with pioneer")
-            self.sick_readings = open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/pioneer_realworld_sick_data.dat", "a")
+
             self.results_file_handle = open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/pioneer_realworld_cardata.dat","a")
             self.people_file=open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/people_position_realworld.dat","a")
 
