@@ -134,6 +134,8 @@ class path_planner():
         self.people_subscriber=rospy.Subscriber("/people/pose",PoseStamped,self.callback_people_pose)
         # self.x=int(input("0:simulation only,1:simulation for pioneer with GPS sensor,2:simulation for pioneer with odometry sensor,3:real world for pioneer\n"))
         self.bufferarea=open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/bufferarea.dat","a")
+        # self.sick_readings = open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/pod_simulation_sick_data.dat", "a")
+        self.sick_readings = open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/pod__sick_data.dat", "a")
         self.x=3
         print(self.x)
 
@@ -144,7 +146,7 @@ class path_planner():
             self.subscriber2=rospy.Subscriber("/robot/velocity", TwistStamped, self.callback_velocity)
             self.subscriber3=rospy.Subscriber("/robot/sick",LaserScan,self.callback_sick)
             print("choose simulation,max_v")
-            self.sick_readings = open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/pod_simulation_sick_data.dat", "a")
+
  
             self.results_file_handle = open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/pod_simulation_cardata.dat","a")
             self.people_file=open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/people_position_simulation.dat","a")
@@ -155,7 +157,7 @@ class path_planner():
             self.subscriber2=rospy.Subscriber("/robot/velocity", TwistStamped, self.callback_velocity)
             self.subscriber3=rospy.Subscriber("/robot/sick",LaserScan,self.callback_sick)
             print("choose simulation with pioneer with GPS sensor")
-            self.sick_readings = open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/pioneer_simulation_GPS_sick_data.dat", "a")
+
             self.results_file_handle = open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/pioneer_simulation_GPS_cardata.dat","a")
             self.people_file=open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/people_position_simulation.dat","a")
         elif self.x==2:
@@ -164,7 +166,7 @@ class path_planner():
             self.subscriber2=rospy.Subscriber("/robot/odom", Odometry, self.callback_velocity)
             self.subscriber3=rospy.Subscriber("/robot/sick",LaserScan,self.callback_sick)
             print("choose simulation with pioneer with odometry sensor")
-            self.sick_readings = open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/pioneer_simulation_sick_data.dat", "a")
+
             self.results_file_handle = open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/pioneer_simulation_cardata.dat","a")
             self.people_file=open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/people_position_simulation.dat","a")
 
@@ -174,7 +176,7 @@ class path_planner():
             self.subscriber2=rospy.Subscriber("/pose", Odometry, self.callback_velocity)
             self.subscriber3=rospy.Subscriber("/scan",LaserScan,self.callback_sick)
             print("choose real world with pioneer")
-            self.sick_readings = open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/pioneer_realworld_sick_data.dat", "a")
+
             self.results_file_handle = open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/pioneer_realworld_cardata.dat","a")
             self.people_file=open("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/people_position_realworld.dat","a")
 
@@ -300,6 +302,8 @@ class path_planner():
         self.setdefault(position,yaw)
         rospy.loginfo("yaw:%f,init_yaw:%f"%(yaw,self.init_yaw))
 
+        #according to http://ieeexplore.ieee.org/stamp/stamp.jsp?arnumber=6566569.
+        
         self.car_x = (position.x-self.init_x)*cos(self.init_yaw)+(position.y-self.init_y)*sin(self.init_yaw)
         self.car_y = -(position.x-self.init_x)*sin(self.init_yaw)+(position.y-self.init_y)*cos(self.init_yaw)
         # self.car_x = (position.x-self.init_x)*cos(yaw-self.init_yaw)+(position.y-self.init_y)*sin(yaw-self.init_yaw)
@@ -342,10 +346,12 @@ class path_planner():
 
                 self.sick_readings.write("%2.4f  "%rospy.get_time())
                 for value in self.readings:
-                    self.sick_readings.write("%2.4f  " %value)              
+                    self.sick_readings.write("%2.4f  " %value) 
+
                 self.sick_readings.write("\n")
                 for i in range(0,ranges_num):
                     self.people_position.write("%2.4f "%peoplestates.world_position_x[i])
+
 
                 # self.people_position.write("%2.4f \n"%self.people_x)
                 # for i in range(0,ranges_num):
