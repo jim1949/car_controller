@@ -840,7 +840,7 @@ def start():
         if path_plan.stopflag==True:
             motion.linear.x=0.0
 
-        path_plan.cmd.publish(motion)
+        # path_plan.cmd.publish(motion)
         motionstate.jerk=motionstate.a-motionstate.last_a
         
 

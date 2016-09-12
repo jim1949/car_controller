@@ -299,8 +299,8 @@ class path_planner():
 
         roll,pitch,yaw = self.eulerfromquaterion(orientation.x,orientation.y,orientation.z,orientation.w)
         self.setdefault(position,yaw)
-        self.car_x = (position.x-self.init_x)*cos(yaw-self.init_yaw)-(position.y-self.init_y)*sin(yaw-self.init_yaw)
-        self.car_y = -(position.x-self.init_x)*sin(yaw-self.init_yaw)+(position.y-self.init_y)*cos(yaw-self.init_yaw)
+        self.car_x = (position.x-self.init_x)*cos(self.init_yaw)+(position.y-self.init_y)*sin(self.init_yaw)
+        self.car_y = -(position.x-self.init_x)*sin(self.init_yaw)+(position.y-self.init_y)*cos(self.init_yaw)
         self.car_theta = yaw-self.init_yaw
 
 
@@ -341,10 +341,10 @@ class path_planner():
                     self.sick_readings.write("%2.4f  " %value)              
 
                 for i in range(0,ranges_num):
-                    self.people_position.write("%2.4f "%peoplestates.world_position_x[i])
+                    self.sick_readings.write("%2.4f "%peoplestates.world_position_x[i])
 
                 for i in range(0,ranges_num):
-                    self.people_position.write("%2.4f "%peoplestates.world_position_y[i])
+                    self.sick_readings.write("%2.4f "%peoplestates.world_position_y[i])
                 self.sick_readings.write("\n")
                 # self.people_position.write("%2.4f \n"%self.people_x)
                 # for i in range(0,ranges_num):
@@ -829,7 +829,7 @@ def start():
             motionstate.v=path_plan.max_v
         motion.linear.x=path_plan.v
         # motion.linear.x=0.1
-        path_plan.cmd.publish(motion)
+        # path_plan.cmd.publish(motion)
         motionstate.jerk=motionstate.a-motionstate.last_a
         
 
