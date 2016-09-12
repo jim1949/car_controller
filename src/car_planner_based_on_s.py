@@ -349,9 +349,12 @@ class path_planner():
                     self.sick_readings.write("%2.4f  " %value) 
 
                 self.sick_readings.write("\n")
-                for i in range(0,ranges_num):
-                    self.people_position.write("%2.4f "%peoplestates.world_position_x[i])
 
+                for i in range(0,ranges_num):
+                    self.sick_readings.write("%2.4f "%peoplestates.world_position_x[i])
+                for i in range(0,ranges_num):
+                    self.sick_readings.write("%2.4f "%peoplestates.world_position_x[i])
+                self.sick_readings.write("\n")
 
                 # self.people_position.write("%2.4f \n"%self.people_x)
                 # for i in range(0,ranges_num):
@@ -360,7 +363,7 @@ class path_planner():
                 error=math.sqrt((estimation.pose_x-peoplestates.world_position_x_mean)**2+(estimation.pose_y-peoplestates.world_position_y_mean)**2)
                 self.people_position.write("%2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f\n"%(rospy.get_time(), peoplestates.world_position_x_mean,peoplestates.world_position_y_mean,estimation.v_x,estimation.pose_x,estimation.pose_y,error))
 
-                self.bufferarea.write("%2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f\n "%(rospy.get_time(),estimation.pose_x,estimation.pose_y,estimation.v_x,motionstate.rec[0],motionstate.rec[1],motionstate.rec[2],motionstate.rec[3],self.car_x,self.car_y,self.car_ctrlSpeed,peoplestates.world_position_x_mean,peoplestates.world_position_y_mean,self.people_x,self.people_y,motionstate.a,motionstate.jerk))
+                self.bufferarea.write("%2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f\n "%(rospy.get_time(),estimation.pose_x,estimation.pose_y,estimation.v_x,motionstate.rec[0],motionstate.rec[1],motionstate.rec[2],motionstate.rec[3],self.car_x,self.car_y,self.car_ctrlSpeed,peoplestates.world_position_x_mean,peoplestates.world_position_y_mean,self.people_x,self.people_y,motionstate.a,motionstate.jerk,error))
 
 
 

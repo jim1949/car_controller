@@ -44,7 +44,7 @@ class Pioneer_data():
     def __init__(self):
         self.pioneer_init_x=0.0
         self.pioneer_init_y=0.0
-        self.scanarea=8.0
+        self.scanarea=15.0
         self.pioneer_init_yaw=-pi/2
 
 
@@ -336,9 +336,9 @@ class path_planner():
                 self.results_file_handle.write("%2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f\n" %(rospy.get_time(), self.car_x, self.car_y, self.car_theta, self.car_ctrlSpeed, self.car_ctrlSteer, peoplestates.world_nearest_position_x,peoplestates.world_nearest_position_y))
                 self.people_file.write(" %2.4f %2.4f\n"%(self.people_x,self.people_y))
 
-                self.sick_readings.write("%2.4f  "%rospy.get_time())
-                for value in self.readings:
-                    self.sick_readings.write("%2.4f  " %value)              
+                # self.sick_readings.write("%2.4f  "%rospy.get_time())
+                # for value in self.readings:
+                #     self.sick_readings.write("%2.4f  " %value)              
 
                 for i in range(0,ranges_num):
                     self.sick_readings.write("%2.4f "%peoplestates.world_position_x[i])
@@ -353,7 +353,7 @@ class path_planner():
                 error=math.sqrt((estimation.pose_x-peoplestates.world_position_x_mean)**2+(estimation.pose_y-peoplestates.world_position_y_mean)**2)
                 self.people_position.write("%2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f\n"%(rospy.get_time(), peoplestates.world_position_x_mean,peoplestates.world_position_y_mean,estimation.v_x,estimation.pose_x,estimation.pose_y,error))
 
-                self.bufferarea.write("%2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f\n "%(rospy.get_time(),estimation.pose_x,estimation.pose_y,estimation.v_x,motionstate.rec[0],motionstate.rec[1],motionstate.rec[2],motionstate.rec[3],self.car_x,self.car_y,self.car_ctrlSpeed,peoplestates.world_position_x_mean,peoplestates.world_position_y_mean,self.people_x,self.people_y,motionstate.a,motionstate.jerk))
+                self.bufferarea.write("%2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f\n "%(rospy.get_time(),estimation.pose_x,estimation.pose_y,estimation.v_x,motionstate.rec[0],motionstate.rec[1],motionstate.rec[2],motionstate.rec[3],self.car_x,self.car_y,self.car_ctrlSpeed,peoplestates.world_position_x_mean,peoplestates.world_position_y_mean,self.people_x,self.people_y,motionstate.a,motionstate.jerk,error))
 
 
 
@@ -834,7 +834,8 @@ def start():
         
 
 
-
+        print(peoplestates.world_position_x)
+        print(peoplestates.world_position_y)
         # print(peoplestates.world_position_y)
         # print(path_plan.readings)
         # motionstate.last_v=motionstate.v

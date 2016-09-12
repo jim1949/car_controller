@@ -52,8 +52,8 @@ bufferarea = np.loadtxt("/Users/jj/car_controller_ws/src/car_controller/src/data
 sickreadings=np.loadtxt("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/pod__sick_data.dat")
 #1.get data from the file
 # local=sickreadings[:,(1,180)]
-# world_x=sickreadings[:,(181,181+179)]
-# world_y=sickreadings[:,(361,361+179)]
+world_x=sickreadings[:,(0,179)]
+world_y=sickreadings[:,(180,359)]
 
 
 t=bufferarea[:,0]
@@ -87,11 +87,7 @@ car_rec_y=[-0.5,0.5]
 p_rec_x=[-0.5,0.5]
 p_rec_y=[-0.5,0.5]
 
-fig = plt.figure()
-ax = fig.gca(projection='3d')
-ax.set_aspect("auto")
-ax.set_autoscale_on(True)
-ax=plot_3d(ax,car_x,car_y,t,car_rec_x,car_rec_y,'y','y')
+
 # print(car_x)
 #2.plot 
 
@@ -101,13 +97,17 @@ ax=plot_3d(ax,car_x,car_y,t,car_rec_x,car_rec_y,'y','y')
 #plot location of the car_vehilce
 # ax.scatter(car_x, car_y, t, c='r', marker='o')
 
+#plot the 3D model
+fig = plt.figure()
+ax = fig.gca(projection='3d')
+ax.set_aspect("auto")
+ax.set_autoscale_on(True)
+
+ax=plot_3d(ax,car_x,car_y,t,car_rec_x,car_rec_y,'y','y')
 ax=plot_3d(ax,real_pose_x,real_pose_y,t,p_rec_x,p_rec_y,'red','b')
+# ax.scatter(estimation_pose_x,estimation_pose_y,t,c='b', marker='o')
 
-
-
-ax.scatter(estimation_pose_x,estimation_pose_y,t,c='b', marker='o')
-
-ax1=plot_3d(estimation_pose_x,estimation_pose_y,t,p_rec_x,p_rec_y)
+# ax1=plot_3d(estimation_pose_x,estimation_pose_y,t,p_rec_x,p_rec_y)
 
 plt.show()
 
@@ -138,22 +138,22 @@ ax3 = fig.add_subplot(414)
 ax3.plot(t,jerk)
 ax3.set_xlim(0,50)
 ax3.set_ylabel("car jerk (m/s^3)")
-
+plt.title("comparison")
 plt.plot()
 plt.show()
 # fig = plt.gcf()
 
 #4.error plot
 fig1=plt.figure()
-ax1=fig1.add_subplot(111)
+ax1=fig1.add_subplot(211)
 ax1.plot(t,error)
 ax1.set_xlim(0,50)
 ax1.set_ylabel("estimation distance error")
 
-ax2=fig1.add_subplot(111)
+ax2=fig1.add_subplot(212)
 ax2.plot(t,speederror)
 ax2.set_xlim(0,50)
-ax2.set_ylabel("estimation distance error")
+ax2.set_ylabel("estimation speed error")
 plt.plot()
 plt.show()
 
