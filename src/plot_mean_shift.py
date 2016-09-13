@@ -10,10 +10,46 @@ import matplotlib.pyplot as plt
 from itertools import cycle
 
 
+
+
+bufferarea = np.loadtxt("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/bufferarea.dat")
+#self.bufferarea.write("%2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f %2.4f \n "%(rospy.get_time(),estimation.pose_x,estimation.pose_y,estimation.v_x,motionstate.rec[0],motionstate.rec[1],motionstate.rec[2],motionstate.rec[3],self.car_x,self.car_y,self.car_ctrlSpeed))
+sickreadings=np.loadtxt("/Users/jj/car_controller_ws/src/car_controller/src/data/test2/pod__sick_data.dat")
+#1.get data from the file
+# local=sickreadings[:,(1,180)]
+world_x=sickreadings[:,(0,179)]
+world_y=sickreadings[:,(180,359)]
+
+
+t=bufferarea[:,0]
+t=t-bufferarea[0][0]
+estimation_pose_x=bufferarea[:,1]
+estimation_pose_y=bufferarea[:,2]
+estimation_v_x=bufferarea[:,3]
+x_u=bufferarea[:,4]
+x_l=bufferarea[:,5]
+y_l=bufferarea[:,6]
+y_r=bufferarea[:,7]
+
+car_x=bufferarea[:,8]
+car_y=bufferarea[:,9]
+car_ctrlSpeed=bufferarea[:,10]
+observe_pose_x=bufferarea[:,11]
+observe_pose_y=bufferarea[:,12]
+
+real_pose_x=bufferarea[:,13]
+real_pose_y=bufferarea[:,14]
+
+a=bufferarea[:,15]
+jerk=bufferarea[:,16]
+#distance from true to observe
+error=bufferarea[:,17]
+
+
 # Generate sample data
 centers = [[1, 1], [-1, -1], [1, -1]]
 X, _ = make_blobs(n_samples=10000, centers=centers, cluster_std=0.6)
-
+X=[observe_pose_x,observe_pose_y]
 ###############################################################################
 # Compute clustering with MeanShift
 

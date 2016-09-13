@@ -504,10 +504,10 @@ class People_states():
 
         #self.world_position_x->self.pose_x
         #self.world_position_y->self.pose_y
-        self.world_position_x_mean=1e3
-        self.world_position_y_mean=1e3
-        self.world_position_x_last_mean=1e3
-        self.world_position_y_last_mean=1e3
+        self.world_position_x_mean=0.0
+        self.world_position_y_mean=0.0
+        self.world_position_x_last_mean=0.0
+        self.world_position_y_last_mean=0.0
 
         self.point_no=0
         self.velocity_x=0.0
@@ -843,7 +843,7 @@ def start():
         if path_plan.stopflag==True:
             motion.linear.x=0.0
 
-        # path_plan.cmd.publish(motion)
+        path_plan.cmd.publish(motion)
         motionstate.jerk=motionstate.a-motionstate.last_a
         
 

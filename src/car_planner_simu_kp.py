@@ -438,8 +438,8 @@ class Weight():
         #(1)store index of deleted particles in left_array.empty points...
         for i in range(0,x_dsampleSize):
             
-            if self.particle_gauss_no[i]==0:
-                left_array.append(i)
+            # if self.particle_gauss_no[i]==0:
+            left_array.append(i)
         # print("len:%d"%len(left_array))
 
         add_array=[]
